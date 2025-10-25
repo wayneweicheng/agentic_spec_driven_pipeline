@@ -1,0 +1,4 @@
+customer_id,country,city,state,postal_code,created_at,updated_at
+1,US,San Francisco,CA,94105,2024-01-01T00:00:00Z,2024-06-01T00:00:00Z
+2,GB,London,,SW1A 1AA,2024-01-10T00:00:00Z,2024-06-15T00:00:00Z
+3,JP,Tokyo,,100-0001,2023-12-20T00:00:00Z,2024-05-20T00:00:00Z

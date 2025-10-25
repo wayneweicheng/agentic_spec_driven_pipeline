@@ -1,0 +1,367 @@
+{
+  "schema": {
+    "raw_schema": "raw",
+    "staging_schema": "temp",
+    "final_schema": "analytics"
+  },
+  "models": [
+    {
+      "name": "stg_customers",
+      "layer": "staging",
+      "sources": [
+        "raw.crm_customers",
+        "raw.crm_addresses"
+      ],
+      "column_mapping": [
+        {
+          "target_column": "customer_id",
+          "type": "INT64",
+          "from_table": "crm_customers",
+          "from_column": "customer_id",
+          "transform": null,
+          "nullable": false,
+          "tests": [
+            "not_null",
+            "unique"
+          ],
+          "description": "Primary business key"
+        },
+        {
+          "target_column": "email",
+          "type": "STRING",
+          "from_table": "crm_customers",
+          "from_column": "email",
+          "transform": "LOWER(TRIM({from}))",
+          "nullable": false,
+          "tests": [
+            "not_null"
+          ],
+          "description": "Standardized email"
+        },
+        {
+          "target_column": "phone_e164",
+          "type": "STRING",
+          "from_table": "crm_customers",
+          "from_column": "phone",
+          "transform": "CASE WHEN REGEXP_CONTAINS(REGEXP_REPLACE({from}, '[^0-9]', ''), r'^1?[0-9]{10}$') THEN CONCAT('+1', RIGHT(REGEXP_REPLACE({from}, '[^0-9]', ''), 10)) WHEN REGEXP_CONTAINS(REGEXP_REPLACE({from}, '[^0-9]', ''), r'^[0-9]{11,15}$') THEN CONCAT('+', REGEXP_REPLACE({from}, '[^0-9]', '')) ELSE NULL END",
+          "nullable": true,
+          "tests": [],
+          "description": "Normalized phone"
+        },
+        {
+          "target_column": "lifecycle_stage",
+          "type": "STRING",
+          "from_table": "crm_customers",
+          "from_column": "status",
+          "transform": "CASE WHEN {from} = 'active' THEN 'active' WHEN {from} = 'inactive' THEN 'churned' WHEN {from} = 'trial' THEN 'trial' WHEN {from} = 'prospect' THEN 'prospect' ELSE 'unknown' END",
+          "nullable": false,
+          "tests": [
+            "accepted_values(...)"
+          ],
+          "description": "Standardized lifecycle"
+        },
+        {
+          "target_column": "country",
+          "type": "STRING",
+          "from_table": "crm_addresses",
+          "from_column": "country",
+          "transform": null,
+          "nullable": true,
+          "tests": [],
+          "description": "Country from best address"
+        },
+        {
+          "target_column": "city",
+          "type": "STRING",
+          "from_table": "crm_addresses",
+          "from_column": "city",
+          "transform": null,
+          "nullable": true,
+          "tests": [],
+          "description": "City"
+        },
+        {
+          "target_column": "state",
+          "type": "STRING",
+          "from_table": "crm_addresses",
+          "from_column": "state",
+          "transform": null,
+          "nullable": true,
+          "tests": [],
+          "description": "State"
+        },
+        {
+          "target_column": "postal_code",
+          "type": "STRING",
+          "from_table": "crm_addresses",
+          "from_column": "postal_code",
+          "transform": null,
+          "nullable": true,
+          "tests": [],
+          "description": "Postal code"
+        },
+        {
+          "target_column": "created_at",
+          "type": "TIMESTAMP",
+          "from_table": "crm_customers",
+          "from_column": "created_at",
+          "transform": null,
+          "nullable": false,
+          "tests": [
+            "not_null"
+          ],
+          "description": "Ingestion baseline"
+        }
+      ],
+      "joins": [
+        {
+          "left_table": "crm_customers",
+          "right_table": "crm_addresses",
+          "type": "LEFT",
+          "condition": "crm_customers.customer_id = crm_addresses.customer_id"
+        }
+      ],
+      "filters": [
+        {
+          "applies_to": "crm_addresses",
+          "predicate": "country IS NOT NULL",
+          "rationale": "drop incomplete addresses"
+        }
+      ],
+      "aggregations": null,
+      "group_by": null,
+      "constraints": {
+        "primary_key": "customer_id",
+        "partition_by": null,
+        "cluster_by": null
+      }
+    },
+    {
+      "name": "stg_orders",
+      "layer": "staging",
+      "sources": [
+        "raw.commerce_orders",
+        "raw.commerce_order_items",
+        "raw.fx_rates"
+      ],
+      "column_mapping": [
+        {
+          "target_column": "order_id",
+          "type": "INT64",
+          "from_table": "commerce_orders",
+          "from_column": "order_id",
+          "transform": null,
+          "nullable": false,
+          "tests": [],
+          "description": null
+        },
+        {
+          "target_column": "customer_id",
+          "type": "INT64",
+          "from_table": "commerce_orders",
+          "from_column": "customer_id",
+          "transform": null,
+          "nullable": false,
+          "tests": [],
+          "description": null
+        },
+        {
+          "target_column": "order_ts",
+          "type": "TIMESTAMP",
+          "from_table": "commerce_orders",
+          "from_column": "order_ts",
+          "transform": null,
+          "nullable": true,
+          "tests": [],
+          "description": null
+        },
+        {
+          "target_column": "amount_usd",
+          "type": "NUMERIC",
+          "from_table": "commerce_orders",
+          "from_column": "total_amount",
+          "transform": "{from} * fx_rates.rate_to_usd",
+          "nullable": true,
+          "tests": [],
+          "description": "Normalized to USD"
+        },
+        {
+          "target_column": "items",
+          "type": "INT64",
+          "from_table": "commerce_order_items",
+          "from_column": "quantity",
+          "transform": "SUM({from})",
+          "nullable": true,
+          "tests": [],
+          "description": "Total items per order"
+        },
+        {
+          "target_column": "refund_usd",
+          "type": "NUMERIC",
+          "from_table": "commerce_order_items",
+          "from_column": "refund_amount",
+          "transform": "SUM({from}) * fx_rates.rate_to_usd",
+          "nullable": true,
+          "tests": [],
+          "description": "Refund amount normalized"
+        }
+      ],
+      "joins": [
+        {
+          "left_table": "commerce_orders",
+          "right_table": "commerce_order_items",
+          "type": "LEFT",
+          "condition": "commerce_orders.order_id = commerce_order_items.order_id"
+        },
+        {
+          "left_table": "commerce_orders",
+          "right_table": "fx_rates",
+          "type": "LEFT",
+          "condition": "commerce_orders.currency = fx_rates.currency"
+        }
+      ],
+      "filters": [],
+      "aggregations": null,
+      "group_by": null,
+      "constraints": {
+        "primary_key": "order_id",
+        "partition_by": null,
+        "cluster_by": null
+      }
+    },
+    {
+      "name": "stg_support_pivot",
+      "layer": "staging",
+      "sources": [
+        "raw.support_tickets"
+      ],
+      "column_mapping": [],
+      "joins": [],
+      "filters": [],
+      "aggregations": [
+        {
+          "metric_column": "open_tickets",
+          "type": "INT64",
+          "formula": "COUNTIF(status = 'OPEN')",
+          "tests": [],
+          "description": "Open ticket count per user"
+        },
+        {
+          "metric_column": "closed_tickets",
+          "type": "INT64",
+          "formula": "COUNTIF(status = 'CLOSED')",
+          "tests": [],
+          "description": "Closed ticket count per user"
+        }
+      ],
+      "group_by": [
+        "customer_id"
+      ],
+      "constraints": {
+        "primary_key": "customer_id",
+        "partition_by": null,
+        "cluster_by": null
+      }
+    },
+    {
+      "name": "dim_customers_scd2",
+      "layer": "final",
+      "sources": [
+        "stg_customers"
+      ],
+      "column_mapping": [],
+      "joins": [],
+      "filters": [],
+      "aggregations": null,
+      "group_by": null,
+      "constraints": {
+        "scd_type": 2,
+        "natural_key": "customer_id",
+        "effective_at": "valid_from",
+        "expiry_at": "valid_to",
+        "current_flag": "is_current"
+      }
+    },
+    {
+      "name": "fact_customer_orders",
+      "layer": "final",
+      "sources": [
+        "stg_orders",
+        "stg_support_pivot"
+      ],
+      "column_mapping": [],
+      "joins": [],
+      "filters": [],
+      "aggregations": [
+        {
+          "metric_column": "order_count",
+          "type": "INT64",
+          "formula": "COUNT(*)",
+          "tests": [
+            "not_null"
+          ],
+          "description": "Total orders per customer"
+        },
+        {
+          "metric_column": "total_spent_usd",
+          "type": "NUMERIC",
+          "formula": "SUM(amount_usd)",
+          "tests": [
+            "not_null"
+          ],
+          "description": "Spend normalized to USD"
+        },
+        {
+          "metric_column": "aov_usd",
+          "type": "NUMERIC",
+          "formula": "AVG(amount_usd)",
+          "tests": [],
+          "description": "Average order value"
+        },
+        {
+          "metric_column": "total_refund_usd",
+          "type": "NUMERIC",
+          "formula": "SUM(refund_usd)",
+          "tests": [],
+          "description": "Refunds normalized to USD"
+        },
+        {
+          "metric_column": "first_order_ts",
+          "type": "TIMESTAMP",
+          "formula": "MIN(order_ts)",
+          "tests": [],
+          "description": "First order timestamp"
+        },
+        {
+          "metric_column": "last_order_ts",
+          "type": "TIMESTAMP",
+          "formula": "MAX(order_ts)",
+          "tests": [],
+          "description": "Most recent order timestamp"
+        },
+        {
+          "metric_column": "open_tickets",
+          "type": "INT64",
+          "formula": "SUM(open_tickets)",
+          "tests": [],
+          "description": "Total open tickets"
+        },
+        {
+          "metric_column": "closed_tickets",
+          "type": "INT64",
+          "formula": "SUM(closed_tickets)",
+          "tests": [],
+          "description": "Total closed tickets"
+        }
+      ],
+      "group_by": [
+        "customer_id"
+      ],
+      "constraints": {
+        "primary_key": "customer_id",
+        "partition_by": null,
+        "cluster_by": "customer_id, last_order_ts"
+      }
+    }
+  ]
+}

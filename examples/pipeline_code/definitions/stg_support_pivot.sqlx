@@ -1,0 +1,24 @@
+config {
+  type: "table",
+  schema: "temp"
+}
+WITH source AS (
+  SELECT
+    *
+  FROM
+    `raw.support_tickets`
+),
+aggregated AS (
+  SELECT
+    customer_id,
+    COUNTIF(status = 'OPEN') AS open_tickets,
+    COUNTIF(status = 'CLOSED') AS closed_tickets
+  FROM
+    source
+  GROUP BY
+    customer_id
+)
+SELECT
+  *
+FROM
+  aggregated

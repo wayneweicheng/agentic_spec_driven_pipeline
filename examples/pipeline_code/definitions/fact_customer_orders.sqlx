@@ -1,0 +1,42 @@
+{ type: "table", schema: "analytics" }
+-- depends_on: ["stg_orders", "stg_support_pivot"]
+WITH
+  aggregated_data AS (
+    SELECT
+      stg_orders.customer_id,
+      COUNT(*) AS order_count,
+      SUM(stg_orders.amount_usd) AS total_spent_usd,
+      AVG(stg_orders.amount_usd) AS aov_usd,
+      SUM(stg_orders.refund_usd) AS total_refund_usd,
+      MIN(stg_orders.order_ts) AS first_order_ts,
+      MAX(stg_orders.order_ts) AS last_order_ts
+    FROM
+      ${ref("stg_orders")}
+    GROUP BY
+      1
+  ),
+  support_data AS (
+    SELECT
+      stg_support_pivot.customer_id,
+      SUM(stg_support_pivot.open_tickets) AS open_tickets,
+      SUM(stg_support_pivot.closed_tickets) AS closed_tickets
+    FROM
+      ${ref("stg_support_pivot")}
+    GROUP BY
+      1
+  )
+SELECT
+  aggregated_data.customer_id,
+  aggregated_data.order_count,
+  aggregated_data.total_spent_usd,
+  aggregated_data.aov_usd,
+  aggregated_data.total_refund_usd,
+  aggregated_data.first_order_ts,
+  aggregated_data.last_order_ts,
+  support_data.open_tickets,
+  support_data.closed_tickets
+FROM
+  aggregated_data
+  INNER JOIN support_data ON aggregated_data.customer_id = support_data.customer_id
+ORDER BY
+  aggregated_data.customer_id, aggregated_data.last_order_ts

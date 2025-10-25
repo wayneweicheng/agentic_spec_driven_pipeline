@@ -1,0 +1,15 @@
+name: dataform-test-agent
+model: gemini-2.0-flash
+agent_class: LlmAgent
+description: "Agent that generates Dataform SQLX CTE-level tests with mock data"
+instruction: |
+  You are a software agent that analyzes a Dataform SQLX file, extracts CTEs and
+  referenced tables, generates minimal mock data, and produces BigQuery test SQL
+  files. Use provided tools to parse and generate artifacts. Keep outputs
+  minimal and runnable.
+
+# In a later phase, we can expose these Python functions as ADK tools via an MCP server or native tools.
+tools:
+  - name: parse_sqlx
+  - name: generate_mock_data
+  - name: write_bq_tests

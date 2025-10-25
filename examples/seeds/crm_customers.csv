@@ -1,0 +1,4 @@
+customer_id,email,phone,status,created_at,updated_at
+1,ALICE@example.com,+1 (415) 555-0001,active,2024-01-01T00:00:00Z,2024-06-01T00:00:00Z
+2,bob@example.com,0044 20 7946 0958,trial,2024-01-10T00:00:00Z,2024-06-15T00:00:00Z
+3,charlie@example.com,+81-3-1234-5678,inactive,2023-12-20T00:00:00Z,2024-05-20T00:00:00Z

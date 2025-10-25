@@ -1,0 +1,60 @@
+config {
+  type: "table",
+  schema: "temp"
+}
+WITH
+  commerce_orders_cte AS (
+    SELECT
+      order_id,
+      customer_id,
+      order_ts,
+      total_amount,
+      currency
+    FROM
+      `${ref('raw.commerce_orders')}`
+  ),
+  commerce_order_items_cte AS (
+    SELECT
+      order_id,
+      quantity,
+      refund_amount
+    FROM
+      `${ref('raw.commerce_order_items')}`
+  ),
+  fx_rates_cte AS (
+    SELECT
+      currency,
+      rate_to_usd
+    FROM
+      `${ref('raw.fx_rates')}`
+  ),
+  joined AS (
+    SELECT
+      co.order_id,
+      co.customer_id,
+      co.order_ts,
+      co.total_amount,
+      co.currency,
+      coi.quantity,
+      coi.refund_amount,
+      fx.rate_to_usd
+    FROM
+      commerce_orders_cte AS co
+    LEFT JOIN commerce_order_items_cte AS coi ON co.order_id = coi.order_id
+    LEFT JOIN fx_rates_cte AS fx ON co.currency = fx.currency
+  ),
+  mapped AS (
+    SELECT
+      order_id AS order_id,
+      customer_id AS customer_id,
+      order_ts AS order_ts,
+      total_amount * rate_to_usd AS amount_usd,
+      SUM(quantity) OVER (PARTITION BY order_id) AS items,
+      SUM(refund_amount) OVER (PARTITION BY order_id) * rate_to_usd AS refund_usd
+    FROM
+      joined
+  )
+SELECT
+  *
+FROM
+  mapped

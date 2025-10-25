@@ -1,0 +1,56 @@
+config({
+  type: "table",
+  schema: "temp"
+})
+WITH
+  crm_customers AS (
+    SELECT
+      customer_id,
+      email,
+      phone,
+      status,
+      created_at
+    FROM
+      `${ref('raw.crm_customers')}`
+  ),
+  crm_addresses AS (
+    SELECT
+      customer_id,
+      country,
+      city,
+      state,
+      postal_code
+    FROM
+      `${ref('raw.crm_addresses')}`
+    WHERE
+      country IS NOT NULL
+  ),
+  joined AS (
+    SELECT
+      crm_customers.customer_id AS customer_id,
+      LOWER(TRIM(crm_customers.email)) AS email,
+      CASE
+        WHEN REGEXP_CONTAINS(REGEXP_REPLACE(crm_customers.phone, '[^0-9]', ''), r'^1?[0-9]{10}$') THEN CONCAT('+1', RIGHT(REGEXP_REPLACE(crm_customers.phone, '[^0-9]', ''), 10))
+        WHEN REGEXP_CONTAINS(REGEXP_REPLACE(crm_customers.phone, '[^0-9]', ''), r'^[0-9]{11,15}$') THEN CONCAT('+', REGEXP_REPLACE(crm_customers.phone, '[^0-9]', ''))
+        ELSE NULL
+      END AS phone_e164,
+      CASE
+        WHEN crm_customers.status = 'active' THEN 'active'
+        WHEN crm_customers.status = 'inactive' THEN 'churned'
+        WHEN crm_customers.status = 'trial' THEN 'trial'
+        WHEN crm_customers.status = 'prospect' THEN 'prospect'
+        ELSE 'unknown'
+      END AS lifecycle_stage,
+      crm_addresses.country AS country,
+      crm_addresses.city AS city,
+      crm_addresses.state AS state,
+      crm_addresses.postal_code AS postal_code,
+      crm_customers.created_at AS created_at
+    FROM
+      crm_customers
+      LEFT JOIN crm_addresses ON crm_customers.customer_id = crm_addresses.customer_id
+  )
+SELECT
+  *
+FROM
+  joined

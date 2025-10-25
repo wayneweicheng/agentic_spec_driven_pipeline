@@ -1,0 +1,26 @@
+config {
+  type: "table",
+  schema: "analytics"
+}
+MERGE INTO `analytics.dim_customers_scd2` AS target
+USING (
+  SELECT
+    stg_customers.customer_id,
+    stg_customers.name,
+    stg_customers.email,
+    stg_customers.phone,
+    CURRENT_TIMESTAMP() AS valid_from,
+    TIMESTAMP('9999-12-31 23:59:59 UTC') AS valid_to,
+    TRUE AS is_current
+  FROM
+    `temp.stg_customers` AS stg_customers
+) AS source
+ON target.customer_id = source.customer_id
+AND target.is_current = TRUE
+WHEN MATCHED THEN
+UPDATE SET
+  target.valid_to = CURRENT_TIMESTAMP(),
+  target.is_current = FALSE
+WHEN NOT MATCHED THEN
+INSERT (customer_id, name, email, phone, valid_from, valid_to, is_current)
+VALUES (source.customer_id, source.name, source.email, source.phone, source.valid_from, source.valid_to, source.is_current)

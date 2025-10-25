@@ -1,0 +1,9 @@
+# Minimal Dataform workflow settings
+# See https://dataform-co.github.io/dataform/docs/reference/configs#dataform-WorkflowSettings
+
+dataformCoreVersion: "3.0.0"
+
+defaultProject: example_project
+defaultDataset: dataform_example
+defaultAssertionDataset: dataform_example_assertions
+defaultLocation: US
