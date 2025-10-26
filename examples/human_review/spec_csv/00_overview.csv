@@ -1,0 +1,6 @@
+Model Name,Layer,Source Tables,Total Columns,Has Joins,Has Aggregations,Primary Key
+stg_customers,staging,"raw.crm_customers, raw.crm_addresses",9,Yes,No,customer_id
+stg_orders,staging,"raw.commerce_orders, raw.commerce_order_items, raw.fx_rates",6,Yes,No,order_id
+stg_support_pivot,staging,raw.support_tickets,2,No,Yes,customer_id
+dim_customers_scd2,final,stg_customers,0,No,No,
+fact_customer_orders,final,"stg_orders, stg_support_pivot",8,No,Yes,customer_id

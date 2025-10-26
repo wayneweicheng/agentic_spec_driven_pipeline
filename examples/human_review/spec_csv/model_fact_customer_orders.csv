@@ -1,0 +1,19 @@
+MODEL,fact_customer_orders
+Layer,final
+Sources,"stg_orders, stg_support_pivot"
+
+AGGREGATIONS
+Metric Column,Type,Formula,Tests,Description
+order_count,INT64,COUNT(*),not_null,Total orders per customer
+total_spent_usd,NUMERIC,SUM(amount_usd),not_null,Spend normalized to USD
+aov_usd,NUMERIC,AVG(amount_usd),,Average order value
+total_refund_usd,NUMERIC,SUM(refund_usd),,Refunds normalized to USD
+first_order_ts,TIMESTAMP,MIN(order_ts),,First order timestamp
+last_order_ts,TIMESTAMP,MAX(order_ts),,Most recent order timestamp
+open_tickets,INT64,SUM(open_tickets),,Total open tickets
+closed_tickets,INT64,SUM(closed_tickets),,Total closed tickets
+
+CONSTRAINTS
+primary_key,customer_id
+partition_by,
+cluster_by,"customer_id, last_order_ts"

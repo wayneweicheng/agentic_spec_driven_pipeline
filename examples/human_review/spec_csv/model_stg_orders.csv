@@ -1,0 +1,22 @@
+MODEL,stg_orders
+Layer,staging
+Sources,"raw.commerce_orders, raw.commerce_order_items, raw.fx_rates"
+
+COLUMN MAPPINGS
+Target Column,Type,From Table,From Column,Transform,Nullable,Tests,Description
+order_id,INT64,commerce_orders,order_id,,No,,
+customer_id,INT64,commerce_orders,customer_id,,No,,
+order_ts,TIMESTAMP,commerce_orders,order_ts,,Yes,,
+amount_usd,NUMERIC,commerce_orders,total_amount,{from} * fx_rates.rate_to_usd,Yes,,Normalized to USD
+items,INT64,commerce_order_items,quantity,SUM({from}),Yes,,Total items per order
+refund_usd,NUMERIC,commerce_order_items,refund_amount,SUM({from}) * fx_rates.rate_to_usd,Yes,,Refund amount normalized
+
+JOINS
+Left Table,Right Table,Type,Condition
+commerce_orders,commerce_order_items,LEFT,commerce_orders.order_id = commerce_order_items.order_id
+commerce_orders,fx_rates,LEFT,commerce_orders.currency = fx_rates.currency
+
+CONSTRAINTS
+primary_key,order_id
+partition_by,
+cluster_by,

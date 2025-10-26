@@ -1,0 +1,13 @@
+MODEL,stg_support_pivot
+Layer,staging
+Sources,raw.support_tickets
+
+AGGREGATIONS
+Metric Column,Type,Formula,Tests,Description
+open_tickets,INT64,COUNTIF(status = 'OPEN'),,Open ticket count per user
+closed_tickets,INT64,COUNTIF(status = 'CLOSED'),,Closed ticket count per user
+
+CONSTRAINTS
+primary_key,customer_id
+partition_by,
+cluster_by,

@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Pipeline Specification - spec</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #1a1a1a;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            border-bottom: 4px solid #366092;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #366092;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #dce6f1;
+        }
+
+        h3 {
+            color: #555;
+            font-size: 1.3em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        .metadata {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            border-left: 4px solid #366092;
+        }
+
+        .metadata p {
+            margin: 5px 0;
+        }
+
+        .metadata strong {
+            color: #366092;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        thead {
+            background: #366092;
+            color: white;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .diagram-container {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .model-section {
+            background: #fafafa;
+            padding: 25px;
+            margin: 30px 0;
+            border-radius: 6px;
+            border-left: 4px solid #4caf50;
+        }
+
+        .layer-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .layer-staging {
+            background: #bbdefb;
+            color: #01579b;
+        }
+
+        .layer-final {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border-left: 4px solid #366092;
+        }
+
+        .toc {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+        }
+
+        .toc ul {
+            list-style: none;
+            padding-left: 20px;
+        }
+
+        .toc li {
+            margin: 8px 0;
+        }
+
+        .toc a {
+            color: #366092;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Data Pipeline Specification</h1>
+
+        <div class="metadata">
+            <p><strong>Source File:</strong> <code>spec.json</code></p>
+            <p><strong>Total Models:</strong> 5</p>
+            <p><strong>Generated:</strong> <span id="timestamp"></span></p>
+        </div>
+
+        <nav class="toc">
+            <h3>Table of Contents</h3>
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#data-flow">Data Flow Diagram</a></li>
+                <li><a href="#models">Models</a>
+                    <ul>
+                        <li><a href="#model-0">stg_customers</a></li>
+                        <li><a href="#model-1">stg_orders</a></li>
+                        <li><a href="#model-2">stg_support_pivot</a></li>
+                        <li><a href="#model-3">dim_customers_scd2</a></li>
+                        <li><a href="#model-4">fact_customer_orders</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+
+        <h2 id="overview">Overview</h2>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Model Name</th>
+                    <th>Layer</th>
+                    <th>Source Tables</th>
+                    <th>Columns</th>
+                    <th>Has Joins</th>
+                    <th>Has Aggregations</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td><strong>stg_customers</strong></td>
+                <td><span class="layer-badge layer-staging">staging</span></td>
+                <td>raw.crm_customers, raw.crm_addresses</td>
+                <td>9</td>
+                <td>Yes</td>
+                <td>No</td>
+            </tr>
+            
+            <tr>
+                <td><strong>stg_orders</strong></td>
+                <td><span class="layer-badge layer-staging">staging</span></td>
+                <td>raw.commerce_orders, raw.commerce_order_items, raw.fx_rates</td>
+                <td>6</td>
+                <td>Yes</td>
+                <td>No</td>
+            </tr>
+            
+            <tr>
+                <td><strong>stg_support_pivot</strong></td>
+                <td><span class="layer-badge layer-staging">staging</span></td>
+                <td>raw.support_tickets</td>
+                <td>2</td>
+                <td>No</td>
+                <td>Yes</td>
+            </tr>
+            
+            <tr>
+                <td><strong>dim_customers_scd2</strong></td>
+                <td><span class="layer-badge layer-final">final</span></td>
+                <td>stg_customers</td>
+                <td>0</td>
+                <td>No</td>
+                <td>No</td>
+            </tr>
+            
+            <tr>
+                <td><strong>fact_customer_orders</strong></td>
+                <td><span class="layer-badge layer-final">final</span></td>
+                <td>stg_orders, stg_support_pivot</td>
+                <td>8</td>
+                <td>No</td>
+                <td>Yes</td>
+            </tr>
+            
+            </tbody>
+        </table>
+        
+
+        <h2 id="data-flow">Data Flow Diagram</h2>
+        <div class="diagram-container">
+            <pre class="mermaid">
+graph TD
+    raw_commerce_order_items[(raw.commerce_order_items)]:::rawSource
+    raw_commerce_orders[(raw.commerce_orders)]:::rawSource
+    raw_crm_addresses[(raw.crm_addresses)]:::rawSource
+    raw_crm_customers[(raw.crm_customers)]:::rawSource
+    raw_fx_rates[(raw.fx_rates)]:::rawSource
+    raw_support_tickets[(raw.support_tickets)]:::rawSource
+    stg_customers[[stg_customers]]:::staging
+    stg_orders[[stg_orders]]:::staging
+    stg_support_pivot[[stg_support_pivot]]:::staging
+    dim_customers_scd2[/dim_customers_scd2/]:::final
+    fact_customer_orders[/fact_customer_orders/]:::final
+
+    raw_crm_customers --> stg_customers
+    raw_crm_addresses --> stg_customers
+    raw_commerce_orders --> stg_orders
+    raw_commerce_order_items --> stg_orders
+    raw_fx_rates --> stg_orders
+    raw_support_tickets --> stg_support_pivot
+    stg_customers --> dim_customers_scd2
+    stg_orders --> fact_customer_orders
+    stg_support_pivot --> fact_customer_orders
+
+    classDef rawSource fill:#f9f,stroke:#333,stroke-width:2px
+    classDef staging fill:#bbf,stroke:#333,stroke-width:2px
+    classDef final fill:#bfb,stroke:#333,stroke-width:3px
+            </pre>
+        </div>
+
+        <h2 id="models">Models</h2>
+        
+        <div class="model-section" id="model-0">
+            <h3>stg_customers <span class="layer-badge layer-staging">staging</span></h3>
+
+            <p><strong>Sources:</strong> <code>raw.crm_customers</code>, <code>raw.crm_addresses</code></p>
+
+            
+        <h4>Columns</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Source</th>
+                    <th>Transform</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td><strong>customer_id</strong></td>
+                <td>INT64</td>
+                <td><code>crm_customers.customer_id</code></td>
+                <td></td>
+                <td>Primary business key</td>
+            </tr>
+            
+            <tr>
+                <td><strong>email</strong></td>
+                <td>STRING</td>
+                <td><code>crm_customers.email</code></td>
+                <td><code>LOWER(TRIM({from}))</code></td>
+                <td>Standardized email</td>
+            </tr>
+            
+            <tr>
+                <td><strong>phone_e164</strong></td>
+                <td>STRING</td>
+                <td><code>crm_customers.phone</code></td>
+                <td><code>CASE WHEN REGEXP_CONTAINS(REGEXP_REPLACE({from}, '[^0-9]', ''), r'^1?[0-9]{10}$') THEN CONCAT('+1', ...</code></td>
+                <td>Normalized phone</td>
+            </tr>
+            
+            <tr>
+                <td><strong>lifecycle_stage</strong></td>
+                <td>STRING</td>
+                <td><code>crm_customers.status</code></td>
+                <td><code>CASE WHEN {from} = 'active' THEN 'active' WHEN {from} = 'inactive' THEN 'churned' WHEN {from} = 'tri...</code></td>
+                <td>Standardized lifecycle</td>
+            </tr>
+            
+            <tr>
+                <td><strong>country</strong></td>
+                <td>STRING</td>
+                <td><code>crm_addresses.country</code></td>
+                <td></td>
+                <td>Country from best address</td>
+            </tr>
+            
+            <tr>
+                <td><strong>city</strong></td>
+                <td>STRING</td>
+                <td><code>crm_addresses.city</code></td>
+                <td></td>
+                <td>City</td>
+            </tr>
+            
+            <tr>
+                <td><strong>state</strong></td>
+                <td>STRING</td>
+                <td><code>crm_addresses.state</code></td>
+                <td></td>
+                <td>State</td>
+            </tr>
+            
+            <tr>
+                <td><strong>postal_code</strong></td>
+                <td>STRING</td>
+                <td><code>crm_addresses.postal_code</code></td>
+                <td></td>
+                <td>Postal code</td>
+            </tr>
+            
+            <tr>
+                <td><strong>created_at</strong></td>
+                <td>TIMESTAMP</td>
+                <td><code>crm_customers.created_at</code></td>
+                <td></td>
+                <td>Ingestion baseline</td>
+            </tr>
+            
+            </tbody>
+        </table>
+        
+            
+            
+        <h4>Joins</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Left Table</th>
+                    <th>Right Table</th>
+                    <th>Type</th>
+                    <th>Condition</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td><code>crm_customers</code></td>
+                <td><code>crm_addresses</code></td>
+                <td>LEFT</td>
+                <td><code>crm_customers.customer_id = crm_addresses.customer_id</code></td>
+            </tr>
+            
+            </tbody>
+        </table>
+        
+        </div>
+            
+        <div class="model-section" id="model-1">
+            <h3>stg_orders <span class="layer-badge layer-staging">staging</span></h3>
+
+            <p><strong>Sources:</strong> <code>raw.commerce_orders</code>, <code>raw.commerce_order_items</code>, <code>raw.fx_rates</code></p>
+
+            
+        <h4>Columns</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Source</th>
+                    <th>Transform</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td><strong>order_id</strong></td>
+                <td>INT64</td>
+                <td><code>commerce_orders.order_id</code></td>
+                <td></td>
+                <td></td>
+            </tr>
+            
+            <tr>
+                <td><strong>customer_id</strong></td>
+                <td>INT64</td>
+                <td><code>commerce_orders.customer_id</code></td>
+                <td></td>
+                <td></td>
+            </tr>
+            
+            <tr>
+                <td><strong>order_ts</strong></td>
+                <td>TIMESTAMP</td>
+                <td><code>commerce_orders.order_ts</code></td>
+                <td></td>
+                <td></td>
+            </tr>
+            
+            <tr>
+                <td><strong>amount_usd</strong></td>
+                <td>NUMERIC</td>
+                <td><code>commerce_orders.total_amount</code></td>
+                <td><code>{from} * fx_rates.rate_to_usd</code></td>
+                <td>Normalized to USD</td>
+            </tr>
+            
+            <tr>
+                <td><strong>items</strong></td>
+                <td>INT64</td>
+                <td><code>commerce_order_items.quantity</code></td>
+                <td><code>SUM({from})</code></td>
+                <td>Total items per order</td>
+            </tr>
+            
+            <tr>
+                <td><strong>refund_usd</strong></td>
+                <td>NUMERIC</td>
+                <td><code>commerce_order_items.refund_amount</code></td>
+                <td><code>SUM({from}) * fx_rates.rate_to_usd</code></td>
+                <td>Refund amount normalized</td>
+            </tr>
+            
+            </tbody>
+        </table>
+        
+            
+            
+        <h4>Joins</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Left Table</th>
+                    <th>Right Table</th>
+                    <th>Type</th>
+                    <th>Condition</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td><code>commerce_orders</code></td>
+                <td><code>commerce_order_items</code></td>
+                <td>LEFT</td>
+                <td><code>commerce_orders.order_id = commerce_order_items.order_id</code></td>
+            </tr>
+            
+            <tr>
+                <td><code>commerce_orders</code></td>
+                <td><code>fx_rates</code></td>
+                <td>LEFT</td>
+                <td><code>commerce_orders.currency = fx_rates.currency</code></td>
+            </tr>
+            
+            </tbody>
+        </table>
+        
+        </div>
+            
+        <div class="model-section" id="model-2">
+            <h3>stg_support_pivot <span class="layer-badge layer-staging">staging</span></h3>
+
+            <p><strong>Sources:</strong> <code>raw.support_tickets</code></p>
+
+            
+            
+        <h4>Aggregations</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Type</th>
+                    <th>Formula</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td><strong>open_tickets</strong></td>
+                <td>INT64</td>
+                <td><code>COUNTIF(status = 'OPEN')</code></td>
+                <td>Open ticket count per user</td>
+            </tr>
+            
+            <tr>
+                <td><strong>closed_tickets</strong></td>
+                <td>INT64</td>
+                <td><code>COUNTIF(status = 'CLOSED')</code></td>
+                <td>Closed ticket count per user</td>
+            </tr>
+            
+            </tbody>
+        </table>
+        
+            
+        </div>
+            
+        <div class="model-section" id="model-3">
+            <h3>dim_customers_scd2 <span class="layer-badge layer-final">final</span></h3>
+
+            <p><strong>Sources:</strong> <code>stg_customers</code></p>
+
+            
+            
+            
+        </div>
+            
+        <div class="model-section" id="model-4">
+            <h3>fact_customer_orders <span class="layer-badge layer-final">final</span></h3>
+
+            <p><strong>Sources:</strong> <code>stg_orders</code>, <code>stg_support_pivot</code></p>
+
+            
+            
+        <h4>Aggregations</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Type</th>
+                    <th>Formula</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td><strong>order_count</strong></td>
+                <td>INT64</td>
+                <td><code>COUNT(*)</code></td>
+                <td>Total orders per customer</td>
+            </tr>
+            
+            <tr>
+                <td><strong>total_spent_usd</strong></td>
+                <td>NUMERIC</td>
+                <td><code>SUM(amount_usd)</code></td>
+                <td>Spend normalized to USD</td>
+            </tr>
+            
+            <tr>
+                <td><strong>aov_usd</strong></td>
+                <td>NUMERIC</td>
+                <td><code>AVG(amount_usd)</code></td>
+                <td>Average order value</td>
+            </tr>
+            
+            <tr>
+                <td><strong>total_refund_usd</strong></td>
+                <td>NUMERIC</td>
+                <td><code>SUM(refund_usd)</code></td>
+                <td>Refunds normalized to USD</td>
+            </tr>
+            
+            <tr>
+                <td><strong>first_order_ts</strong></td>
+                <td>TIMESTAMP</td>
+                <td><code>MIN(order_ts)</code></td>
+                <td>First order timestamp</td>
+            </tr>
+            
+            <tr>
+                <td><strong>last_order_ts</strong></td>
+                <td>TIMESTAMP</td>
+                <td><code>MAX(order_ts)</code></td>
+                <td>Most recent order timestamp</td>
+            </tr>
+            
+            <tr>
+                <td><strong>open_tickets</strong></td>
+                <td>INT64</td>
+                <td><code>SUM(open_tickets)</code></td>
+                <td>Total open tickets</td>
+            </tr>
+            
+            <tr>
+                <td><strong>closed_tickets</strong></td>
+                <td>INT64</td>
+                <td><code>SUM(closed_tickets)</code></td>
+                <td>Total closed tickets</td>
+            </tr>
+            
+            </tbody>
+        </table>
+        
+            
+        </div>
+            
+
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+        document.getElementById('timestamp').textContent = new Date().toLocaleString();
+    </script>
+</body>
+</html>

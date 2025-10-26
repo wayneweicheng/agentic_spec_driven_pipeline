@@ -1,0 +1,26 @@
+Model,Layer,Column Name,Type,Source Table,Source Column,Transform,Nullable,Tests,Description
+stg_customers,staging,customer_id,INT64,crm_customers,customer_id,None,No,"not_null, unique",Primary business key
+stg_customers,staging,email,STRING,crm_customers,email,LOWER(TRIM({from})),No,not_null,Standardized email
+stg_customers,staging,phone_e164,STRING,crm_customers,phone,"CASE WHEN REGEXP_CONTAINS(REGEXP_REPLACE({from}, '[^0-9]', ''), r'^1?[0-9]{10}$') THEN CONCAT('+1', RIGHT(REGEXP_REPLACE({from}, '[^0-9]', ''), 10)) WHEN REGEXP_CONTAINS(REGEXP_REPLACE({from}, '[^0-9]', ''), r'^[0-9]{11,15}$') THEN CONCAT('+', REGEXP_REPLACE({from}, '[^0-9]', '')) ELSE NULL END",Yes,,Normalized phone
+stg_customers,staging,lifecycle_stage,STRING,crm_customers,status,CASE WHEN {from} = 'active' THEN 'active' WHEN {from} = 'inactive' THEN 'churned' WHEN {from} = 'trial' THEN 'trial' WHEN {from} = 'prospect' THEN 'prospect' ELSE 'unknown' END,No,accepted_values(...),Standardized lifecycle
+stg_customers,staging,country,STRING,crm_addresses,country,None,Yes,,Country from best address
+stg_customers,staging,city,STRING,crm_addresses,city,None,Yes,,City
+stg_customers,staging,state,STRING,crm_addresses,state,None,Yes,,State
+stg_customers,staging,postal_code,STRING,crm_addresses,postal_code,None,Yes,,Postal code
+stg_customers,staging,created_at,TIMESTAMP,crm_customers,created_at,None,No,not_null,Ingestion baseline
+stg_orders,staging,order_id,INT64,commerce_orders,order_id,None,No,,
+stg_orders,staging,customer_id,INT64,commerce_orders,customer_id,None,No,,
+stg_orders,staging,order_ts,TIMESTAMP,commerce_orders,order_ts,None,Yes,,
+stg_orders,staging,amount_usd,NUMERIC,commerce_orders,total_amount,{from} * fx_rates.rate_to_usd,Yes,,Normalized to USD
+stg_orders,staging,items,INT64,commerce_order_items,quantity,SUM({from}),Yes,,Total items per order
+stg_orders,staging,refund_usd,NUMERIC,commerce_order_items,refund_amount,SUM({from}) * fx_rates.rate_to_usd,Yes,,Refund amount normalized
+stg_support_pivot,staging,open_tickets,INT64,AGGREGATION,,COUNTIF(status = 'OPEN'),,,Open ticket count per user
+stg_support_pivot,staging,closed_tickets,INT64,AGGREGATION,,COUNTIF(status = 'CLOSED'),,,Closed ticket count per user
+fact_customer_orders,final,order_count,INT64,AGGREGATION,,COUNT(*),,not_null,Total orders per customer
+fact_customer_orders,final,total_spent_usd,NUMERIC,AGGREGATION,,SUM(amount_usd),,not_null,Spend normalized to USD
+fact_customer_orders,final,aov_usd,NUMERIC,AGGREGATION,,AVG(amount_usd),,,Average order value
+fact_customer_orders,final,total_refund_usd,NUMERIC,AGGREGATION,,SUM(refund_usd),,,Refunds normalized to USD
+fact_customer_orders,final,first_order_ts,TIMESTAMP,AGGREGATION,,MIN(order_ts),,,First order timestamp
+fact_customer_orders,final,last_order_ts,TIMESTAMP,AGGREGATION,,MAX(order_ts),,,Most recent order timestamp
+fact_customer_orders,final,open_tickets,INT64,AGGREGATION,,SUM(open_tickets),,,Total open tickets
+fact_customer_orders,final,closed_tickets,INT64,AGGREGATION,,SUM(closed_tickets),,,Total closed tickets

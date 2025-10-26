@@ -1,0 +1,8 @@
+Model,Layer,Column,Test Type,Description
+stg_customers,staging,customer_id,not_null,Primary business key
+stg_customers,staging,customer_id,unique,Primary business key
+stg_customers,staging,email,not_null,Standardized email
+stg_customers,staging,lifecycle_stage,accepted_values(...),Standardized lifecycle
+stg_customers,staging,created_at,not_null,Ingestion baseline
+fact_customer_orders,final,order_count,not_null,Total orders per customer
+fact_customer_orders,final,total_spent_usd,not_null,Spend normalized to USD

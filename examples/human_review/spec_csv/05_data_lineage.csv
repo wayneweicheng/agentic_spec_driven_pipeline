@@ -1,0 +1,6 @@
+Model,Layer,Depends On (Sources),Used By (Downstream)
+stg_customers,staging,"raw.crm_customers, raw.crm_addresses",dim_customers_scd2
+stg_orders,staging,"raw.commerce_orders, raw.commerce_order_items, raw.fx_rates",fact_customer_orders
+stg_support_pivot,staging,raw.support_tickets,fact_customer_orders
+dim_customers_scd2,final,stg_customers,
+fact_customer_orders,final,"stg_orders, stg_support_pivot",

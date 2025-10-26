@@ -1,0 +1,4 @@
+Model,Layer,Left Table,Right Table,Join Type,Join Condition
+stg_customers,staging,crm_customers,crm_addresses,LEFT,crm_customers.customer_id = crm_addresses.customer_id
+stg_orders,staging,commerce_orders,commerce_order_items,LEFT,commerce_orders.order_id = commerce_order_items.order_id
+stg_orders,staging,commerce_orders,fx_rates,LEFT,commerce_orders.currency = fx_rates.currency

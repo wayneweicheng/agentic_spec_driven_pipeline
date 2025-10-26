@@ -1,0 +1,10 @@
+MODEL,dim_customers_scd2
+Layer,final
+Sources,stg_customers
+
+CONSTRAINTS
+scd_type,2
+natural_key,customer_id
+effective_at,valid_from
+expiry_at,valid_to
+current_flag,is_current

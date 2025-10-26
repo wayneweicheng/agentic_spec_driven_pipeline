@@ -1,0 +1,17 @@
+Model,Column,Type,Transform Logic,Description
+stg_customers,email,Column Transform,LOWER(TRIM({from})),Standardized email
+stg_customers,phone_e164,Column Transform,"CASE WHEN REGEXP_CONTAINS(REGEXP_REPLACE({from}, '[^0-9]', ''), r'^1?[0-9]{10}$') THEN CONCAT('+1', RIGHT(REGEXP_REPLACE({from}, '[^0-9]', ''), 10)) WHEN REGEXP_CONTAINS(REGEXP_REPLACE({from}, '[^0-9]', ''), r'^[0-9]{11,15}$') THEN CONCAT('+', REGEXP_REPLACE({from}, '[^0-9]', '')) ELSE NULL END",Normalized phone
+stg_customers,lifecycle_stage,Column Transform,CASE WHEN {from} = 'active' THEN 'active' WHEN {from} = 'inactive' THEN 'churned' WHEN {from} = 'trial' THEN 'trial' WHEN {from} = 'prospect' THEN 'prospect' ELSE 'unknown' END,Standardized lifecycle
+stg_orders,amount_usd,Column Transform,{from} * fx_rates.rate_to_usd,Normalized to USD
+stg_orders,items,Column Transform,SUM({from}),Total items per order
+stg_orders,refund_usd,Column Transform,SUM({from}) * fx_rates.rate_to_usd,Refund amount normalized
+stg_support_pivot,open_tickets,Aggregation,COUNTIF(status = 'OPEN'),Open ticket count per user
+stg_support_pivot,closed_tickets,Aggregation,COUNTIF(status = 'CLOSED'),Closed ticket count per user
+fact_customer_orders,order_count,Aggregation,COUNT(*),Total orders per customer
+fact_customer_orders,total_spent_usd,Aggregation,SUM(amount_usd),Spend normalized to USD
+fact_customer_orders,aov_usd,Aggregation,AVG(amount_usd),Average order value
+fact_customer_orders,total_refund_usd,Aggregation,SUM(refund_usd),Refunds normalized to USD
+fact_customer_orders,first_order_ts,Aggregation,MIN(order_ts),First order timestamp
+fact_customer_orders,last_order_ts,Aggregation,MAX(order_ts),Most recent order timestamp
+fact_customer_orders,open_tickets,Aggregation,SUM(open_tickets),Total open tickets
+fact_customer_orders,closed_tickets,Aggregation,SUM(closed_tickets),Total closed tickets
